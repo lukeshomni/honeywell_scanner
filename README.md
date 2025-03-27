@@ -47,6 +47,10 @@ From any version prior to ^4.0.0+14 you must:
 - Change the override of the `onDecode` function to receive a `ScannedData` object instead of a `String`.
 - `ScannedData` object contains the scanned code and other info related to the scanned code.
 
+From any version prior to ^7.0.0 you must:
+- `scannerCallback`, `onScannerDecodeCallback` and `onScannerErrorCallback` properties are now functions `setScannerCallback(...)`, `setScannerDecodeCallback(...)`, `setScannerErrorCallback(...)`.
+- Call `disposeScanner()` instead of `stopScanner()` when no longer need to use a scanner instance.
+
 ## How to use
 
 # First
@@ -103,23 +107,23 @@ HoneywellScanner honeywellScanner = HoneywellScanner(
 ```
 
 
-1. Check if device is supported. Take into account this plugin supports a list of Honeywell devices but not all, so this function ensures you compatibility.
+1. Check if device is supported. Take into account this plugin supports a list of Honeywell devices but not all, so this function ensures compatibility.
 ```dart
 isDeviceSupported = await honeywellScanner.isSupported();
 ```
 
 2. You can set the scanner callback listeners after constructor like:
 ```dart
-honeywellScanner.setScannerCallBack(this);
+honeywellScanner.setScannerCallback(this);
 ```
 Or
 ```dart
-honeywellScanner.onScannerDecodeCallback = (scannedData) {
+honeywellScanner.setScannerDecodeCallbac((scannedData) {
 // Do something here
-};
-honeywellScanner.onScannerErrorCallback = (error) {
+});
+honeywellScanner.setScannerErrorCallback((error) {
 // Do something here
-};
+});
 ```
 
 
@@ -168,7 +172,7 @@ honeywellScanner.stopScanner();
 
 7. Check if scanner is already started:
 ```dart
-honeywellScanner.isStarted;
+honeywellScanner.isStarted();
 ```
 
 8. You can also do a `scanner.pauseScanner()` or `scanner.resumeScanner()` depending on your app life cycle state.
@@ -183,9 +187,27 @@ honeywellScanner.startScanning();
 honeywellScanner.stopScanning();
 ``` 
 
+11. Dispose scanner, this function does multiple things:
+    1. Removes the scanning callback
+    2. Stops the scanner to release the connection
+    3. Resumes any previous scanner instance state
+    Use this function when you are done with an instance of the scanner.
+```dart
+honeywellScanner.disposeScanner();
+``` 
+
 ### Notes:
-> - Both `startScaning()` and `stopScanning()` uses the `softwareTrigger(bool state)` function where `state = true` means scanning and `state = false` menas not scanning
+> - Both `startScanning()` and `stopScanning()` uses the `softwareTrigger(bool state)` function where `state = true` means scanning and `state = false` menas not scanning
 > - It's recommended to check the example code for a better idea of how to work with this plugin.
+> - [IMPORTANT] This plugin allows to create different instances of the scanner, so you can have multiple scanner instances in your app, but you must be careful with this because the `channel` communication with the native code is only one. So when you are working with different scanner instances in different Screens in your app make sure to call to `disposeScanner()` when you are done with it to avoid issues with the state of the previous instances of the scanner. Take a look at the example code to see how multiple instances of the scanner can work in different screens.
+
+#### Demo
+<div>
+ <a href="https://raw.githubusercontent.com/luis901101/honeywell_scanner/master/example/doc/gifs/sample.gif">
+    <img src="https://raw.githubusercontent.com/luis901101/honeywell_scanner/master/example/doc/gifs/sample.gif" width="460"/>
+ </a>
+</div>
+
 
 ## Other plugins you may be interested in
 

@@ -9,6 +9,11 @@ Types of changes
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## 7.0.0+0 (2025-03-27)
+### Changed
+- [Breaking Change] Changed callback functions to be set as functions instead of properties, see **"Migration instructions"** on the README.md.
+- Scanner state handling improved to allow multiple instances. Usage remains the same, just make sure to call `disposeScanner()` when no longer need to use a scanner instance.
+
 ## 6.0.0+0 (2025-02-13)
 ### Changed
 - Example project updated to adjust to latest flutter version.

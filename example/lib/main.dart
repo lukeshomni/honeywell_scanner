@@ -8,14 +8,26 @@ void main() {
       .then((_) => runApp(const MyApp()));
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  State createState() => _MyAppState();
+  Widget build(BuildContext context) => MaterialApp(
+        home: ScanningScreen(
+          instanceCount: 1,
+        ),
+      );
 }
 
-class _MyAppState extends State<MyApp>
+class ScanningScreen extends StatefulWidget {
+  final int instanceCount;
+  const ScanningScreen({super.key, required this.instanceCount});
+
+  @override
+  State createState() => _ScanningScreenState();
+}
+
+class _ScanningScreenState extends State<ScanningScreen>
     with WidgetsBindingObserver
     implements ScannerCallback {
   HoneywellScanner honeywellScanner = HoneywellScanner();
@@ -26,6 +38,8 @@ class _MyAppState extends State<MyApp>
   bool scan2DFormats = true;
   bool isDeviceSupported = false;
 
+  int get instanceCount => widget.instanceCount;
+
   static const BTN_START_SCANNER = 0,
       BTN_STOP_SCANNER = 1,
       BTN_START_SCANNING = 2,
@@ -35,9 +49,9 @@ class _MyAppState extends State<MyApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    honeywellScanner.scannerCallback = this;
-    // honeywellScanner.onScannerDecodeCallback = onDecoded;
-    // honeywellScanner.onScannerErrorCallback = onError;
+    honeywellScanner.setScannerCallback(this);
+    // honeywellScanner.setScannerDecodeCallback(onDecoded);
+    // honeywellScanner.setScannerErrorCallback(onError);
     init();
   }
 
@@ -80,6 +94,8 @@ class _MyAppState extends State<MyApp>
 
   @override
   void onDecoded(ScannedData? scannedData) {
+    print(
+        '===== Instance $instanceCount decoded data: ${scannedData?.code} =====');
     setState(() {
       this.scannedData = scannedData;
     });
@@ -124,110 +140,124 @@ class _MyAppState extends State<MyApp>
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Honeywell scanner example'),
-        ),
-        body: Center(
-          child: Scrollbar(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Instance $instanceCount'),
+      ),
+      body: Center(
+        child: Scrollbar(
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Text(
+                  'Device supported: $isDeviceSupported',
+                  style: TextStyle(
+                      color: isDeviceSupported ? Colors.green : Colors.red,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Scanner: ${scannerEnabled ? "Started" : "Stopped"}',
+                  style: TextStyle(
+                      color: scannerEnabled ? Colors.blue : Colors.orange),
+                ),
+                const SizedBox(height: 8),
+                if (scannedData != null && errorMessage == null)
+                  scannedDataView,
+                const SizedBox(height: 8),
+                if (errorMessage != null) ...[
                   Text(
-                    'Device supported: $isDeviceSupported',
-                    style: TextStyle(
-                        color: isDeviceSupported ? Colors.green : Colors.red,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
+                    'Error: $errorMessage',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Scanner: ${scannerEnabled ? "Started" : "Stopped"}',
-                    style: TextStyle(
-                        color: scannerEnabled ? Colors.blue : Colors.orange),
-                  ),
-                  const SizedBox(height: 8),
-                  if (scannedData != null && errorMessage == null)
-                    scannedDataView,
-                  const SizedBox(height: 8),
-                  if (errorMessage != null) ...[
-                    Text(
-                      'Error: $errorMessage',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          color: Colors.red, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  SwitchListTile(
-                    title: const Text("Scan 1D Codes"),
-                    subtitle:
-                        const Text("like Code-128, Code-39, Code-93, etc"),
-                    value: scan1DFormats,
-                    onChanged: (value) {
-                      scan1DFormats = value;
-                      updateScanProperties();
-                      setState(() {});
-                    },
-                  ),
-                  SwitchListTile(
-                    title: const Text("Scan 2D Codes"),
-                    subtitle: const Text("like QR, Data Matrix, Aztec, etc"),
-                    value: scan2DFormats,
-                    onChanged: (value) {
-                      scan2DFormats = value;
-                      updateScanProperties();
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => onClick(BTN_START_SCANNER),
-                        child: const Text("Start Scanner"),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => onClick(BTN_STOP_SCANNER),
-                        child: const Text("Stop Scanner"),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => onClick(BTN_START_SCANNING),
-                        child: const Text("Start Scanning"),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green.shade700,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () => onClick(BTN_STOP_SCANNING),
-                        child: const Text("Stop Scanning"),
-                      ),
-                    ],
-                  ),
                 ],
-              ),
+                SwitchListTile(
+                  title: const Text("Scan 1D Codes"),
+                  subtitle: const Text("like Code-128, Code-39, Code-93, etc"),
+                  value: scan1DFormats,
+                  onChanged: (value) {
+                    scan1DFormats = value;
+                    updateScanProperties();
+                    setState(() {});
+                  },
+                ),
+                SwitchListTile(
+                  title: const Text("Scan 2D Codes"),
+                  subtitle: const Text("like QR, Data Matrix, Aztec, etc"),
+                  value: scan2DFormats,
+                  onChanged: (value) {
+                    scan2DFormats = value;
+                    updateScanProperties();
+                    setState(() {});
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => onClick(BTN_START_SCANNER),
+                      child: const Text("Start Scanner"),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => onClick(BTN_STOP_SCANNER),
+                      child: const Text("Stop Scanner"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => onClick(BTN_START_SCANNING),
+                      child: const Text("Start Scanning"),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => onClick(BTN_STOP_SCANNING),
+                      child: const Text("Stop Scanning"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => ScanningScreen(
+                              key: UniqueKey(),
+                              instanceCount: instanceCount + 1)),
+                    );
+                  },
+                  child: Text('Navigate to a new instance of this screen'),
+                ),
+              ],
             ),
           ),
         ),
@@ -240,17 +270,17 @@ class _MyAppState extends State<MyApp>
     super.didChangeAppLifecycleState(state);
     switch (state) {
       case AppLifecycleState.resumed:
-        honeywellScanner.resumeScanner();
+        resumeScanner();
         break;
       case AppLifecycleState.inactive:
-        honeywellScanner.pauseScanner();
+        pauseScanner();
         break;
       case AppLifecycleState
             .paused: //AppLifecycleState.paused is used as stopped state because deactivate() works more as a pause for lifecycle
-        honeywellScanner.pauseScanner();
+        pauseScanner();
         break;
       case AppLifecycleState.detached:
-        honeywellScanner.pauseScanner();
+        pauseScanner();
         break;
       default:
         break;
@@ -262,24 +292,24 @@ class _MyAppState extends State<MyApp>
       errorMessage = null;
       switch (id) {
         case BTN_START_SCANNER:
-          if (await honeywellScanner.startScanner()) {
+          if (await startScanner()) {
             setState(() {
               scannerEnabled = true;
             });
           }
           break;
         case BTN_STOP_SCANNER:
-          if (await honeywellScanner.stopScanner()) {
+          if (await stopScanner()) {
             setState(() {
               scannerEnabled = false;
             });
           }
           break;
         case BTN_START_SCANNING:
-          await honeywellScanner.startScanning();
+          await startScanning();
           break;
         case BTN_STOP_SCANNING:
-          await honeywellScanner.stopScanning();
+          await stopScanning();
           break;
       }
     } catch (e) {
@@ -290,9 +320,44 @@ class _MyAppState extends State<MyApp>
     }
   }
 
+  Future<bool> startScanner() {
+    print('===== Instance $instanceCount started scanner =====');
+    return honeywellScanner.startScanner();
+  }
+
+  Future<bool> stopScanner() {
+    print('===== Instance $instanceCount stopped scanner =====');
+    return honeywellScanner.stopScanner();
+  }
+
+  Future<bool> pauseScanner() {
+    print('===== Instance $instanceCount paused scanner =====');
+    return honeywellScanner.pauseScanner();
+  }
+
+  Future<bool> resumeScanner() {
+    print('===== Instance $instanceCount resumed scanner =====');
+    return honeywellScanner.resumeScanner();
+  }
+
+  Future<bool> startScanning() {
+    print('===== Instance $instanceCount started scanning =====');
+    return honeywellScanner.startScanning();
+  }
+
+  Future<bool> stopScanning() {
+    print('===== Instance $instanceCount stopped scanning =====');
+    return honeywellScanner.stopScanning();
+  }
+
+  Future<bool> disposeScanner() {
+    print('===== Instance $instanceCount disposed ===== ');
+    return honeywellScanner.disposeScanner();
+  }
+
   @override
   void dispose() {
-    honeywellScanner.stopScanner();
+    disposeScanner();
     super.dispose();
   }
 }

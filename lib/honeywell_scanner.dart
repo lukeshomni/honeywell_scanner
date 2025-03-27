@@ -24,28 +24,38 @@ class HoneywellScanner {
   static const _ON_DECODED = "onDecoded";
   static const _ON_ERROR = "onError";
 
-  static const MethodChannel _channel = MethodChannel(_METHOD_CHANNEL);
+  static final List<HoneywellScanner> _instances = [];
+
+  late MethodChannel _channel;
   ScannerCallback? _scannerCallback;
   OnScannerDecodeCallback? _onScannerDecodeCallback;
   OnScannerErrorCallback? _onScannerErrorCallback;
 
-  HoneywellScanner(
-      {ScannerCallback? scannerCallback,
-      OnScannerDecodeCallback? onScannerDecodeCallback,
-      OnScannerErrorCallback? onScannerErrorCallback}) {
-    _channel.setMethodCallHandler(_onMethodCall);
+  HoneywellScanner({
+    ScannerCallback? scannerCallback,
+    OnScannerDecodeCallback? onScannerDecodeCallback,
+    OnScannerErrorCallback? onScannerErrorCallback,
+  }) {
+    _channel = MethodChannel(_METHOD_CHANNEL);
     _scannerCallback = scannerCallback;
     _onScannerDecodeCallback = onScannerDecodeCallback;
     _onScannerErrorCallback = onScannerErrorCallback;
+    _instances.add(this);
   }
 
-  set scannerCallback(ScannerCallback scannerCallback) =>
+  /// Sets the scanner callback as a class that implements the ScannerCallback
+  /// interface
+  void setScannerCallback(ScannerCallback scannerCallback) =>
       _scannerCallback = scannerCallback;
 
-  set onScannerDecodeCallback(OnScannerDecodeCallback value) =>
+  /// Sets the scanner decode callback as a function that takes a ScannedData
+  /// object as a parameter
+  void setScannerDecodeCallback(OnScannerDecodeCallback value) =>
       _onScannerDecodeCallback = value;
 
-  set onScannerErrorCallback(OnScannerErrorCallback value) =>
+  /// Sets the scanner error callback as a function that takes an Exception
+  /// object as a parameter
+  void setScannerErrorCallback(OnScannerErrorCallback value) =>
       _onScannerErrorCallback = value;
 
   Future<void> _onMethodCall(MethodCall call) async {
@@ -88,45 +98,101 @@ class HoneywellScanner {
     _onScannerErrorCallback?.call(error);
   }
 
+  /// Check if device is supported. Take into account this plugin supports a list
+  /// of Honeywell devices but not all, so this function ensures compatibility.
   Future<bool> isSupported() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     return await _channel.invokeMethod<bool>(_IS_SUPPORTED) ?? false;
   }
 
+  /// Checks if the scanner is already started
   Future<bool> isStarted() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     return await _channel.invokeMethod<bool>(_IS_STARTED) ?? false;
   }
 
+  /// Setting properties. By default **honeywell_scanner** sets properties to
+  /// support all code formats from [CodeFormat] enum, it also sets the trigger
+  /// control property to [autoControl] and disables browser launching when
+  /// scanning urls.
+  /// However you can set any property you want by using the
+  /// [honeywellScanner.setProperties(properties)] in case you need some specific
+  /// behavior from the scanner.
+  /// Properties are represented as a [Map<String, dynamic>], so for instance if
+  /// you want the scanner only scans 1D codes and you want the scanned [EAN-13]
+  /// bar codes to include the last digit **(the check digit)** and want the scanned
+  /// [Codabar] bar codes to include the **start/stop digits**; then you must
+  /// set it on properties like:
+  ///
+  /// List&lt;CodeFormat&gt; codeFormats = CodeFormatUtils.ALL_1D_FORMATS;
+  /// Map&lt;String, dynamic&gt; properties = {
+  ///   ...CodeFormatUtils.getAsPropertiesComplement(codeFormats), //CodeFormatUtils.getAsPropertiesComplement(...) this function converts a list of CodeFormat enums to its corresponding properties representation.
+  ///   'DEC_CODABAR_START_STOP_TRANSMIT': true, //This is the Codabar start/stop digit specific property
+  ///   'DEC_EAN13_CHECK_DIGIT_TRANSMIT': true, //This is the EAN13 check digit specific property
+  /// };
+  /// honeywellScanner.setProperties(properties);
+  ///
   Future<void> setProperties(Map<String, dynamic> mapProperties) {
     return _channel.invokeMethod(_SET_PROPERTIES, mapProperties);
   }
 
+  /// Starts the scanner listener, at this point the app will be listening
+  /// for any scanned code when you press the physical PDA button or
+  /// your in-app button to scan codes
   Future<bool> startScanner() async {
+    _channel.setMethodCallHandler(_onMethodCall);
     return await _channel.invokeMethod<bool>(_START_SCANNER) ?? false;
   }
 
+  /// Use this function to resume the scanner from a paused or stopped state.
   Future<bool> resumeScanner() async {
+    _channel.setMethodCallHandler(_onMethodCall);
     return await _channel.invokeMethod(_RESUME_SCANNER) ?? false;
   }
 
+  /// Use this function to pause the scanner temporarily, for instance when your
+  /// app goes o background. [pauseScanner] is different to [stopScanner] because
+  /// it doesn't release the resources of the scanner.
   Future<bool> pauseScanner() async {
     return await _channel.invokeMethod(_PAUSE_SCANNER) ?? false;
   }
 
+  /// Stops the scanner listener, this will release and close the scanner connection
   Future<bool> stopScanner() async {
     return await _channel.invokeMethod(_STOP_SCANNER) ?? false;
   }
 
+  /// Activates or deactivates the scanner sensor to scan codes.
   Future<bool> softwareTrigger(bool state) async {
     return await _channel.invokeMethod(_SOFTWARE_TRIGGER, state) ?? false;
   }
 
+  /// Activates the scanner sensor to scan codes. This is the same as pressing
+  /// the PDA physical button. Calling this function would be the same as calling
+  /// [softwareTrigger(true)]
   Future<bool> startScanning() async {
     return await _channel.invokeMethod(_START_SCANNING) ?? false;
   }
 
+  /// Cancels the scanning. Calling this function would be the same as calling
+  /// [softwareTrigger(false)]
   Future<bool> stopScanning() async {
     return await _channel.invokeMethod(_STOP_SCANNING) ?? false;
+  }
+
+  /// Dispose scanner, this function does multiple things:
+  ///   1. Removes the scanning callback
+  ///   2. Stops the scanner to release the connection
+  ///   3. Resumes any previous scanner instance state
+  /// Use this function when you are done with an instance of the scanner.
+  Future<bool> disposeScanner() async {
+    _channel.setMethodCallHandler(null);
+    final result = await stopScanner();
+    if (_instances.remove(this)) {
+      if (_instances.isNotEmpty) {
+        _instances.last.resumeScanner();
+      }
+    }
+    return result;
   }
 }
