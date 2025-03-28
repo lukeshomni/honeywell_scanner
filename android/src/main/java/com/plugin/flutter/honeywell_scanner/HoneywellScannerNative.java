@@ -31,7 +31,7 @@ public class HoneywellScannerNative extends HoneywellScanner implements AidcMana
         supported = false;
         init();
     }
-    
+
     @Override
     public boolean isSupported() { return supported; }
 
@@ -50,7 +50,24 @@ public class HoneywellScannerNative extends HoneywellScanner implements AidcMana
         try{
             supported = true;
             scannerManager = aidcManager;
-            scanner = scannerManager.createBarcodeReader();
+
+            // Add error handling for DCS service
+            if (scannerManager == null) {
+                onError(new Exception("Failed to initialize scanner manager. DCS service may not be available."));
+                return;
+            }
+
+            try {
+                scanner = scannerManager.createBarcodeReader();
+                if (scanner == null) {
+                    onError(new Exception("No barcode reader available. Please check if the scanner is properly connected."));
+                    return;
+                }
+            } catch (Exception e) {
+                onError(new Exception("Failed to create barcode reader: " + e.getMessage()));
+                return;
+            }
+
             // register bar code event listener
             scanner.addBarcodeListener(this);
 
@@ -62,16 +79,13 @@ public class HoneywellScannerNative extends HoneywellScanner implements AidcMana
             } catch (UnsupportedPropertyException e) {
                 onError(e);
             }
-            // register trigger state change listener
-            // When using Automatic Trigger control do not need to implement the onTriggerEvent
-            // function scanner.addTriggerListener(this);
 
             if(properties != null) scanner.setProperties(properties);
             initialized = true;
             initializing = false;
             if(pendingResume) resumeScanner();
         }
-        catch (InvalidScannerNameException e){
+        catch (Exception e) {
             onError(e);
         }
     }
