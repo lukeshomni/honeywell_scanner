@@ -51,7 +51,7 @@ public class HoneywellScannerPlugin implements FlutterPlugin, MethodCallHandler,
         if(channel != null) channel.setMethodCallHandler(null);
     }
 
-    // This static method is only to remain compatible with apps that don’t use the v2 Android embedding.
+    // This static method is only to remain compatible with apps that don't use the v2 Android embedding.
 //    @Deprecated()
 //    @SuppressLint("Registrar")
 //    public static void registerWith(Registrar registrar)
@@ -96,8 +96,14 @@ public class HoneywellScannerPlugin implements FlutterPlugin, MethodCallHandler,
                     break;
                 case _SET_PROPERTIES:
                     if(scanner != null){
-                        scanner.setProperties((Map<String, Object>) call.arguments);
-                        result.success(true);
+                        new Thread(() -> {
+                            try {
+                                scanner.setProperties((Map<String, Object>) call.arguments);
+                                handler.post(() -> result.success(true));
+                            } catch (Exception e) {
+                                handler.post(() -> result.error("Failed to set properties", e.getMessage(), null));
+                            }
+                        }).start();
                     } else scannerNotInitialized(result);
                     break;
 
